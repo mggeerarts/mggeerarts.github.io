@@ -15,34 +15,38 @@
   <script src="jquery.min.js"></script>
   <script src="bootstrap.min.js"></script>
   <script>
-  openpgp.initWorker({ path:'openpgp.worker.min.js' }) // set the relative web worker path
+<script type="module">
+  import * as openpgp from 'https://cdn.jsdelivr.net/npm/openpgp@5.10.0/+esm';
 
-  const encryptDecryptFunction = async() => {
+  const encryptDecryptFunction = async () => {
     document.getElementById("progressbar").className = "progress-bar progress-bar-striped progress-bar-animated";
-    // put keys in backtick (``) to avoid errors caused by spaces or tabs
-    const privkey = document.getElementById("privKey").value
-    const passphrase = document.getElementById("pass").value
-    const encrypted = document.getElementById("pgpMsg").value
 
-    const privKeyObj = (await openpgp.key.readArmored(privkey).catch((err) => {document.getElementById("result").value = err.message;document.getElementById("progressbar").className = "progress-bar bg-danger";})).keys[0]
+    const privkey = document.getElementById("privKey").value;
+    const passphrase = document.getElementById("pass").value;
+    const encrypted = document.getElementById("pgpMsg").value;
 
-    if (passphrase) {
-      await privKeyObj.decrypt(passphrase).catch((err) => {document.getElementById("result").value = err.message;document.getElementById("progressbar").className = "progress-bar bg-danger";})
-    }
+    try {
+      const privateKey = await openpgp.readPrivateKey({ armoredKey: privkey });
+      const decryptedKey = await openpgp.decryptKey({
+        privateKey,
+        passphrase
+      });
 
-    const options = {
-        message: await openpgp.message.readArmored(encrypted).catch((err) => {document.getElementById("result").value = err.message;document.getElementById("progressbar").className = "progress-bar bg-danger";}),    // parse armored message
-        privateKeys: [privKeyObj]                                 // for decryption
-    }
+      const message = await openpgp.readMessage({ armoredMessage: encrypted });
 
-    openpgp.decrypt(options).then(plaintext => {
-      document.getElementById("result").value = plaintext.data;
+      const { data: decrypted } = await openpgp.decrypt({
+        message,
+        decryptionKeys: decryptedKey
+      });
+
+      document.getElementById("result").value = decrypted;
       document.getElementById("progressbar").className = "progress-bar bg-success";
-    }).catch(function(error){
-      document.getElementById("result").value = error.message;
+    } catch (err) {
+      document.getElementById("result").value = err.message;
       document.getElementById("progressbar").className = "progress-bar bg-danger";
-    });
-  }
+    }
+  };
+
   </script>
   <style>
   html, body {
